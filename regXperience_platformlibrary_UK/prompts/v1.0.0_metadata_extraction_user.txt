@@ -1,0 +1,27 @@
+Document title: $title
+Source authority: $source_authority
+Source URL: $source_url
+
+Document text (first 2000 tokens):
+$document_excerpt
+
+---
+Return a JSON object with exactly these keys:
+{
+  "jurisdiction": string,
+  "issuing_authority": string,
+  "regulation_name": string,
+  "instrument_code": string | null,
+  "year_issued": integer,
+  "document_type": string,
+  "document_type_confidence": float,
+  "regulatory_domain": string,
+  "topic_category": string,
+  "applies_to": string[],
+  "legal_force": string,
+  "compliance_tier": "Tier1" | "Tier2" | "Tier3",
+  "structure_type": string,
+  "has_annexures": boolean,
+  "companion_docs": string[],
+  "reporting_standards": string | null
+}

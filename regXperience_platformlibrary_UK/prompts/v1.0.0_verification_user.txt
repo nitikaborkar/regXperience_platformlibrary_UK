@@ -1,0 +1,13 @@
+Requirement text to verify:
+"$requirement_text"
+
+Source chunk (the chunk this requirement was attributed to):
+$chunk_text
+
+---
+Return:
+{
+  "verified": boolean,
+  "confidence": float,
+  "note": string | null
+}

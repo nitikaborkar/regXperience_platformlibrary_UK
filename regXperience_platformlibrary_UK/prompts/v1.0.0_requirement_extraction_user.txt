@@ -1,0 +1,25 @@
+Document context:
+- Regulation name: $regulation_name
+- Issuing authority: $issuing_authority
+- Document type: $document_type
+- Legal force: $legal_force
+- Structure type: $structure_type
+- Applies to: $applies_to
+
+Chunk $chunk_index of $total_chunks | Section heading: $section_heading | Page estimate: $page_estimate
+
+Chunk text:
+$chunk_text
+
+---
+Return a JSON array of requirement objects. Each object must have exactly these keys:
+[
+  {
+    "requirement_text": string,
+    "section_reference": string | null,
+    "obligation_type": "Mandatory" | "Guidance" | "BestPractice",
+    "obligation_language": string,
+    "nature": string[],
+    "actor": string[]
+  }
+]

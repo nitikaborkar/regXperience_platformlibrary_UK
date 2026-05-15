@@ -1,0 +1,18 @@
+# Core pipeline
+langgraph>=0.2.0
+langchain-core>=0.2.0
+
+# LLM providers (install whichever you use)
+anthropic>=0.28.0
+# openai>=1.30.0  # uncomment if using OpenAI
+
+# Document ingestion
+pdfplumber>=0.11.0
+pypdf>=4.0.0
+beautifulsoup4>=4.12.0
+
+# Embeddings (optional but recommended — enables accurate deduplication)
+sentence-transformers>=3.0.0
+
+# Utilities
+python-dotenv>=1.0.0
