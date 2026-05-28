@@ -1,13 +1,13 @@
 Document title: $title
 Source authority: $source_authority
-Source URL: $source_url
+Source URL / file path: $source_url
 
 Document text (first 2000 tokens):
 $document_excerpt
 
 ---
-Classify this document. Return a JSON object with exactly these keys:
+Classify this document. Return:
 {
-  "document_type": string,
-  "document_type_confidence": float
+  "instrument_type": string,
+  "instrument_type_confidence": float
 }

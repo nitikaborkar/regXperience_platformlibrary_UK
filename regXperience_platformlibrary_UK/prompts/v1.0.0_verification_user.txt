@@ -1,6 +1,9 @@
 Requirement text to verify:
 "$requirement_text"
 
+Original-language verbatim (if provided):
+"$source_verbatim"
+
 Source chunk (the chunk this requirement was attributed to):
 $chunk_text
 
@@ -8,6 +11,7 @@ $chunk_text
 Return:
 {
   "verified": boolean,
-  "confidence": float,
+  "similarity_score": float,
+  "verbatim_present": boolean,
   "note": string | null
 }

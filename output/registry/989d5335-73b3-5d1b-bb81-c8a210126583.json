@@ -1,0 +1,38 @@
+{
+  "doc_id": "989d5335-73b3-5d1b-bb81-c8a210126583",
+  "file_path": "SS31_15-TheICAAPandtheSupervisoryReviewandEvaluationProcess(SREP).pdf",
+  "source_url": null,
+  "jurisdiction": "UK",
+  "issuer": "Prudential Regulation Authority (PRA)",
+  "document_title": "SS31/15 – The Internal Capital Adequacy Assessment Process (ICAAP) and the Supervisory Review and Evaluation Process (SREP)",
+  "instrument_type": "SupervisoryStatement",
+  "domain": "Prudential – Capital Adequacy",
+  "legal_force": "quasi-binding",
+  "effective_date": "2025-12-01",
+  "applicable_entities": [
+    "PRA-regulated banks",
+    "building societies",
+    "designated investment firms",
+    "PRA-approved holding companies",
+    "PRA-designated holding companies",
+    "ring-fenced bodies"
+  ],
+  "legal_basis": [
+    "PRA Rulebook – Internal Capital Adequacy Assessment (ICAA) Part",
+    "Financial Services and Markets Act 2000 (FSMA), section 142A",
+    "Capital Requirements Regulation (CRR)",
+    "CRD IV",
+    "PRA Policy Statement PS11/15",
+    "PRA Supervisory Statement SS8/16",
+    "PRA Statement of Policy – The PRA's methodologies for setting Pillar 2 capital"
+  ],
+  "has_sg_clause_tags": false,
+  "mas_notice_number": null,
+  "is_cross_sector": false,
+  "chunk_strategy": "fixed",
+  "total_pages": 47,
+  "total_chunks": 0,
+  "processed_at": "2026-05-28T02:45:08.314405+00:00",
+  "structure_type": "lettered_paragraphs",
+  "has_annexures": true
+}

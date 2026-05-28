@@ -1,25 +1,28 @@
 Document context:
-- Regulation name: $regulation_name
-- Issuing authority: $issuing_authority
-- Document type: $document_type
+- Title: $document_title
+- Issuer: $issuer
+- Instrument type: $instrument_type
 - Legal force: $legal_force
-- Structure type: $structure_type
+- Jurisdiction: $jurisdiction
+- Domain: $domain
 - Applies to: $applies_to
 
-Chunk $chunk_index of $total_chunks | Section heading: $section_heading | Page estimate: $page_estimate
+Chunk $chunk_index of $total_chunks | Section: $section_heading | Page: $page_estimate
 
 Chunk text:
 $chunk_text
 
 ---
-Return a JSON array of requirement objects. Each object must have exactly these keys:
+Return a JSON array. Each object must have exactly these keys:
 [
   {
     "requirement_text": string,
-    "section_reference": string | null,
-    "obligation_type": "Mandatory" | "Guidance" | "BestPractice",
-    "obligation_language": string,
-    "nature": string[],
-    "actor": string[]
+    "source_verbatim": string | null,
+    "clause_reference": string | null,
+    "bnm_tag": "S" | "E" | "G" | "R",
+    "sub_domain": string | null,
+    "requirement_category": string | null,
+    "keywords": string[],
+    "applies_to": string[]
   }
 ]

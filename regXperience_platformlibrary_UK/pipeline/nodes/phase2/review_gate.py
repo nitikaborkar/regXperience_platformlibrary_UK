@@ -1,19 +1,15 @@
 """
 Node 2.5 — Review Gate
-Decision node:
-  - verified = false OR confidence < 0.80  → route to human_review queue
-  - otherwise                              → pass to write_requirements
-This node does NOT branch the graph itself; it partitions the
-verified_requirements list so write_requirements only sees the good ones
-and human_review_queue captures the rest.
-The LangGraph conditional edge is defined in graph.py.
+Routes requirements:
+  - verified=False OR similarity_score < 0.80 → human_review_queue
+  - otherwise → pass to write_requirements
 """
 
 from __future__ import annotations
 
 from pipeline.state import PipelineState
 
-_CONFIDENCE_THRESHOLD = 0.80
+_SCORE_THRESHOLD = 0.80
 
 
 def review_gate(state: PipelineState) -> PipelineState:
@@ -24,7 +20,7 @@ def review_gate(state: PipelineState) -> PipelineState:
     flagged: list = []
 
     for req in verified:
-        if not req["verified"] or req["verification_confidence"] < _CONFIDENCE_THRESHOLD:
+        if not req["verified"] or req["similarity_score"] < _SCORE_THRESHOLD:
             flagged.append({**req, "review_reason": _reason(req)})
         else:
             passed.append(req)
@@ -45,5 +41,5 @@ def review_gate(state: PipelineState) -> PipelineState:
 
 def _reason(req: dict) -> str:
     if not req["verified"]:
-        return f"verified=False (confidence={req['verification_confidence']:.2f})"
-    return f"Low verification confidence ({req['verification_confidence']:.2f} < {_CONFIDENCE_THRESHOLD})"
+        return f"verified=False (score={req['similarity_score']:.2f})"
+    return f"Low similarity score ({req['similarity_score']:.2f} < {_SCORE_THRESHOLD})"

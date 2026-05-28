@@ -2,9 +2,9 @@
 Node 2.1 — Chunker
 Split document into chunks.
 Strategy depends on structure_type set in Phase 1:
-  - numbered_clauses  → chunk at clause boundaries, max 2,000 tokens
-  - prose / mixed     → fixed 1,500 tokens with 300-token overlap
-  - lettered_paragraphs → fixed 1,500 tokens with 300-token overlap
+  - numbered_clauses  → chunk at clause boundaries ("clause" strategy)
+  - prose / mixed     → fixed 1,500 tokens with 300-token overlap ("fixed" strategy)
+Sets doc["chunk_strategy"] as a plain string and doc["total_chunks"] as an int.
 """
 
 from __future__ import annotations
@@ -12,21 +12,18 @@ import re
 import uuid
 from typing import Optional
 
-from pipeline.state import Chunk, ChunkStrategy, PipelineState
+from pipeline.state import Chunk, PipelineState
 
-# 1 token ≈ 4 chars (rough but good enough for chunking)
 _CHARS_PER_TOKEN = 4
-
 _PROSE_CHUNK_TOKENS = 1_500
 _PROSE_OVERLAP_TOKENS = 300
 _CLAUSE_MAX_TOKENS = 2_000
 
-# Numbered clause boundary: lines starting with FCA/PRA ref or 1.2.3 style
 _CLAUSE_BOUNDARY = re.compile(
     r"(?:^|\n)(?="
-    r"[A-Z]{2,6}\s*\d[\w.]*\s*[A-Z]?\s*\.?\d"       # SYSC 15A.2.1
-    r"|(?:Article|Section|Clause|Rule)\s+\d+"          # Article 5
-    r"|\d+\.\d+(?:\.\d+)*\s"                           # 3.1.2
+    r"[A-Z]{2,6}\s*\d[\w.]*\s*[A-Z]?\s*\.?\d"
+    r"|(?:Article|Section|Clause|Rule)\s+\d+"
+    r"|\d+\.\d+(?:\.\d+)*\s"
     r")",
     re.MULTILINE | re.IGNORECASE,
 )
@@ -35,13 +32,11 @@ _HEADING_PATTERN = re.compile(r"(?:^|\n)(#{1,4}\s+.+|[A-Z][A-Z\s,&\-]{4,})\s*(?=
 
 
 def _detect_section_heading(text: str) -> Optional[str]:
-    """Return the first heading-like line in a text snippet."""
     m = _HEADING_PATTERN.search(text[:500])
     return m.group(1).strip() if m else None
 
 
 def _estimate_page(offset: int, total_chars: int, assumed_pages: int = 30) -> int:
-    """Very rough page estimate based on character offset."""
     return max(1, round((offset / max(total_chars, 1)) * assumed_pages) + 1)
 
 
@@ -53,7 +48,6 @@ def _fixed_size_chunks(text: str, chunk_tokens: int, overlap_tokens: int) -> lis
     chunks: list[Chunk] = []
     idx = 0
     pos = 0
-
     while pos < total:
         end = min(pos + chunk_chars, total)
         snippet = text[pos:end]
@@ -70,27 +64,21 @@ def _fixed_size_chunks(text: str, chunk_tokens: int, overlap_tokens: int) -> lis
         pos += step
         if end == total:
             break
-
     return chunks
 
 
 def _clause_chunks(text: str, max_tokens: int) -> list[Chunk]:
     max_chars = max_tokens * _CHARS_PER_TOKEN
-    # Split on clause boundaries
     boundaries = [m.start() for m in _CLAUSE_BOUNDARY.finditer(text)]
     if not boundaries:
-        # Fallback to fixed chunking
         return _fixed_size_chunks(text, max_tokens, max_tokens // 5)
 
-    # Build segments between boundaries
-    segments: list[str] = []
-    starts: list[int] = []
+    segments, starts = [], []
     for i, start in enumerate(boundaries):
         end = boundaries[i + 1] if i + 1 < len(boundaries) else len(text)
         segments.append(text[start:end])
         starts.append(start)
 
-    # Merge small segments; split oversized ones
     chunks: list[Chunk] = []
     idx = 0
     buf = ""
@@ -113,7 +101,6 @@ def _clause_chunks(text: str, max_tokens: int) -> list[Chunk]:
                     section_heading=_detect_section_heading(buf),
                 ))
                 idx += 1
-            # If segment itself is oversized, split it
             if len(seg) > max_chars:
                 sub = _fixed_size_chunks(seg, max_tokens, max_tokens // 5)
                 for s in sub:
@@ -145,28 +132,21 @@ def _clause_chunks(text: str, max_tokens: int) -> list[Chunk]:
 def chunker(state: PipelineState) -> PipelineState:
     doc = dict(state["document"])
     text = doc["raw_text"]
-    structure_type = doc.get("structure_type", "prose")
+    structure_type = doc.get("structure_type", "prose")  # from structure_analysis
 
     if structure_type == "numbered_clauses":
         chunks = _clause_chunks(text, _CLAUSE_MAX_TOKENS)
-        chunk_size_tokens = _CLAUSE_MAX_TOKENS
-        overlap_tokens = 0
+        chunk_strategy_str = "clause"
     else:
         chunks = _fixed_size_chunks(text, _PROSE_CHUNK_TOKENS, _PROSE_OVERLAP_TOKENS)
-        chunk_size_tokens = _PROSE_CHUNK_TOKENS
-        overlap_tokens = _PROSE_OVERLAP_TOKENS
+        chunk_strategy_str = "fixed"
 
-    strategy: ChunkStrategy = {
-        "chunk_size_tokens": chunk_size_tokens,
-        "overlap_tokens": overlap_tokens,
-        "total_chunks": len(chunks),
-    }
-    doc["chunk_strategy"] = strategy
+    doc["chunk_strategy"] = chunk_strategy_str
+    doc["total_chunks"] = len(chunks)
 
     print(
-        f"[Chunker] structure_type={structure_type!r} | "
-        f"{len(chunks)} chunks | "
-        f"chunk_size={chunk_size_tokens} tokens | overlap={overlap_tokens}"
+        f"[Chunker] strategy={chunk_strategy_str!r} | "
+        f"{len(chunks)} chunks"
     )
 
     return {**state, "document": doc, "chunks": chunks}

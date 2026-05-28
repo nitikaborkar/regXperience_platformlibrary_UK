@@ -1,8 +1,8 @@
 """
 Node 2.4 — Verification Pass
-Hallucination guard: second LLM call.
-Given the requirement_text and the source chunk, verify that the
-requirement text actually appears verbatim (or near-verbatim) in the source.
+Hallucination guard: second LLM call per requirement.
+Verifies requirement_text appears verbatim (or near-verbatim) in the source chunk.
+Stamps jurisdiction, domain, legal_force from document onto each requirement.
 """
 
 from __future__ import annotations
@@ -15,16 +15,15 @@ from pipeline.state import ExtractedRequirement, PipelineState, VerifiedRequirem
 
 
 def _chunk_text_for(state: PipelineState, chunk_id: str) -> str:
-    """Look up the source chunk text by chunk_id."""
     for chunk in state["chunks"]:
         if chunk["chunk_id"] == chunk_id:
             return chunk["text"]
     return ""
 
 
-def _make_requirement_id(document_id: str, section_ref: str | None, req_text: str) -> str:
+def _make_req_id(doc_id: str, clause_ref: str | None, req_text: str) -> str:
     import hashlib
-    seed = f"{document_id}:{section_ref}:{req_text[:200]}"
+    seed = f"{doc_id}:{clause_ref}:{req_text[:200]}"
     sha = hashlib.sha256(seed.encode()).hexdigest()
     return str(uuid.UUID(sha[:32]))
 
@@ -34,9 +33,12 @@ def verification_pass(state: PipelineState) -> PipelineState:
     requirements = state["extracted_requirements"]
     total = len(requirements)
 
-    verified: list[VerifiedRequirement] = []
+    jurisdiction = doc.get("jurisdiction", "")
+    domain = doc.get("domain", "")
+    legal_force = doc.get("legal_force", "")
 
     system_prompt = render_prompt("verification_system")
+    verified: list[VerifiedRequirement] = []
 
     for i, req in enumerate(requirements):
         chunk_text = _chunk_text_for(state, req["source_chunk_id"])
@@ -44,39 +46,41 @@ def verification_pass(state: PipelineState) -> PipelineState:
         user_prompt = render_prompt(
             "verification_user",
             requirement_text=req["requirement_text"],
+            source_verbatim=req.get("source_verbatim") or "",
             chunk_text=chunk_text,
         )
 
         try:
             result: dict = call_llm_json(system_prompt, user_prompt)
         except Exception as exc:
-            print(f"  [Verify] ⚠  Req {i+1}/{total} verification failed: {exc}")
-            result = {"verified": False, "confidence": 0.0, "note": str(exc)}
+            print(f"  [Verify] ⚠  Req {i+1}/{total} failed: {exc}")
+            result = {"verified": False, "similarity_score": 0.0, "verbatim_present": False, "note": str(exc)}
+
+        similarity_score = float(result.get("similarity_score", 0.0))
 
         v_req = VerifiedRequirement(
-            # base fields from extracted
+            # base fields from extraction
             requirement_text=req["requirement_text"],
-            section_reference=req.get("section_reference"),
-            obligation_type=req["obligation_type"],
-            obligation_language=req["obligation_language"],
-            nature=req.get("nature", []),
-            actor=req.get("actor", []),
+            source_verbatim=req.get("source_verbatim"),
+            clause_reference=req.get("clause_reference"),
+            bnm_tag=req.get("bnm_tag"),
+            sub_domain=req.get("sub_domain"),
+            requirement_category=req.get("requirement_category"),
+            keywords=req.get("keywords", []),
+            applies_to=req.get("applies_to", []),
             source_chunk_id=req["source_chunk_id"],
             page_estimate=req.get("page_estimate"),
             # verification output
-            requirement_id=_make_requirement_id(
-                doc["document_id"],
-                req.get("section_reference"),
-                req["requirement_text"],
-            ),
-            document_id=doc["document_id"],
-            run_id=doc["run_id"],
-            extraction_timestamp=datetime.now(timezone.utc).isoformat(),
+            req_id=_make_req_id(doc["doc_id"], req.get("clause_reference"), req["requirement_text"]),
+            doc_id=doc["doc_id"],
+            jurisdiction=jurisdiction,
+            domain=domain,
+            legal_force=legal_force,
             verified=bool(result.get("verified", False)),
-            verification_confidence=float(result.get("confidence", 0.0)),
+            similarity_score=similarity_score,
             verification_note=result.get("note"),
-            human_reviewed=False,
-            tags=[],
+            verbatim_present=bool(result.get("verbatim_present", similarity_score >= 0.95)),
+            extracted_at=datetime.now(timezone.utc).isoformat(),
         )
 
         verified.append(v_req)
@@ -84,8 +88,9 @@ def verification_pass(state: PipelineState) -> PipelineState:
         status = "✓" if v_req["verified"] else "✗"
         print(
             f"  [Verify] {status} Req {i+1}/{total} | "
-            f"confidence={v_req['verification_confidence']:.2f} | "
-            f"section={v_req.get('section_reference')!r}"
+            f"score={v_req['similarity_score']:.2f} | "
+            f"verbatim={v_req['verbatim_present']} | "
+            f"clause={v_req.get('clause_reference')!r}"
         )
 
     passed = sum(1 for r in verified if r["verified"])

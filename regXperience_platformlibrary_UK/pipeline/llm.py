@@ -53,7 +53,8 @@ def _call_anthropic(system_prompt: str, user_prompt: str, max_tokens: int, tempe
     import anthropic  # type: ignore
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    model = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-5")
+    model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+
 
     message = client.messages.create(
         model=model,

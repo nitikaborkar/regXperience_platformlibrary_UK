@@ -1,7 +1,7 @@
 """
 Node 2.2 — Requirement Extractor
 LLM call (per chunk): extract all regulatory requirements.
-Returns structured JSON per the schema in Section 2.2 of the spec.
+Returns structured JSON per the new schema.
 """
 
 from __future__ import annotations
@@ -18,18 +18,18 @@ def requirement_extractor(state: PipelineState) -> PipelineState:
     total = len(chunks)
 
     all_requirements: list[ExtractedRequirement] = []
-
-    applies_to_str = ", ".join(doc.get("applies_to", [])) or "not specified"
+    applies_to_str = ", ".join(doc.get("applicable_entities", [])) or "not specified"
 
     for chunk in chunks:
         system_prompt = render_prompt("requirement_extraction_system")
         user_prompt = render_prompt(
             "requirement_extraction_user",
-            regulation_name=doc.get("regulation_name", ""),
-            issuing_authority=doc.get("issuing_authority", ""),
-            document_type=doc.get("document_type", ""),
+            document_title=doc.get("document_title", ""),
+            issuer=doc.get("issuer", ""),
+            instrument_type=doc.get("instrument_type", ""),
             legal_force=doc.get("legal_force", ""),
-            structure_type=doc.get("structure_type", ""),
+            jurisdiction=doc.get("jurisdiction", ""),
+            domain=doc.get("domain", ""),
             applies_to=applies_to_str,
             chunk_index=str(chunk["chunk_index"] + 1),
             total_chunks=str(total),
@@ -44,21 +44,21 @@ def requirement_extractor(state: PipelineState) -> PipelineState:
             print(f"  [Extractor] ⚠  Chunk {chunk['chunk_index']+1}/{total} failed: {exc}")
             continue
 
+        if isinstance(result, dict):
+            result = result.get("requirements", [])
         if not isinstance(result, list):
-            # Some models return {"requirements": [...]}
-            if isinstance(result, dict):
-                result = result.get("requirements", [])
-            else:
-                result = []
+            result = []
 
         for item in result:
             req = ExtractedRequirement(
                 requirement_text=item.get("requirement_text", ""),
-                section_reference=item.get("section_reference"),
-                obligation_type=item.get("obligation_type", "Guidance"),
-                obligation_language=item.get("obligation_language", ""),
-                nature=item.get("nature", []),
-                actor=item.get("actor", []),
+                source_verbatim=item.get("source_verbatim"),
+                clause_reference=item.get("clause_reference"),
+                bnm_tag=item.get("bnm_tag"),
+                sub_domain=item.get("sub_domain"),
+                requirement_category=item.get("requirement_category"),
+                keywords=item.get("keywords", []),
+                applies_to=item.get("applies_to", []),
                 source_chunk_id=chunk["chunk_id"],
                 page_estimate=chunk.get("page_estimate"),
             )
